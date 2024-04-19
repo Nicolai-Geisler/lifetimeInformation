@@ -6,7 +6,15 @@ app.http('httpTrigger1', {
     handler: async (req, context) => {
         context.log('JavaScript HTTP trigger function processed a request.');
 
-        const reqBody = await req.json();
+        let reqBody = {};
+        if(req.body) {
+            try {
+                reqBody = await req.json();
+            } catch (error) {
+                return { status: 400, body: "Invalid JSON in request body" };
+            }
+        }
+
         let year = req.query.get('year') || (reqBody && reqBody.year);
         let month = req.query.get('month') || (reqBody && reqBody.month);
         let day = req.query.get('day') || (reqBody && reqBody.day);
