@@ -5,13 +5,13 @@ app.http('httpTrigger1', {
     authLevel: 'anonymous',
     handler: async (req, context) => {
         context.log('JavaScript HTTP trigger function processed a request.');
-        console.log('Received request: ' + req.query);
 
-        let year = req.query.get('year');
-        let month = req.query.get('month');
-        let day = req.query.get('day');
+        const reqBody = await req.json();
+        let year = req.query.get('year') || (reqBody && reqBody.year);
+        let month = req.query.get('month') || (reqBody && reqBody.month);
+        let day = req.query.get('day') || (reqBody && reqBody.day);
 
-        if(!year || !month|| !day) {
+        if(!year || !month || !day || isNaN(year) || isNaN(month) || isNaN(day)) {
             return { status: 401, body: "Invalid params" }
         }
 
@@ -19,58 +19,62 @@ app.http('httpTrigger1', {
         month = parseInt(month, 10);
         year = parseInt(year, 10);
 
-        if (year < 0 || year > 2024 || year == null) {
+        if (year < 0 || year > 2024) {
             return { status: 401, body: "Invalid year" }
         }
 
-        if (month < 0 || month > 11 || month == null) {
+        if (month < 0 || month > 11) {
             return { status: 401, body: "Invalid month" }
         }
 
-        if (day < 0 || day > 31 || day == null) {
+        if (day < 0 || day > 31) {
             return { status: 401, body: "Invalid day" }
         }
 
-        let testDateObj = new Date(year, month, day);
-        let validDate = testDateObj.getFullYear() === year && testDateObj.getMonth() === month && testDateObj.getDate() === day;
+        const inputDate = new Date(year, month, day);
+        const isValidDate = inputDate.getFullYear() === year && inputDate.getMonth() === month && inputDate.getDate() === day;
 
-        if (!validDate) {
+        if (!isValidDate) {
             return { status: 401, body: "Invalid date" }
         }
 
         const today = new Date();
+        const currentAge = calculateCurrentAge(today, inputDate);
 
-        // Calculate weekday
-        const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-        const birthday = weekdays[testDateObj.getDay()];
-
-        // Calculate Days alive
-        let diffInMs = today - testDateObj;
-        const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
-        // Calculate age
-        let age = today.getFullYear() - testDateObj.getFullYear();
-        const dobThisYear = new Date(today.getFullYear(), testDateObj.getMonth(), testDateObj.getDate());
-        if(today < dobThisYear) {
-            age--;
-        }
-
-        // Calculate turtle age
-        let turtleAge = (age / 270).toFixed(2)*100 + "%";
-
-        // Build respone JSON
+        // Build response JSON
         let responseMessage = {
-            "Day of birth": birthday, 
-            "Days alive": diffInDays,
-            "Current age": age,
-            "Compared to Hariett the turtle": turtleAge
+            "Day of birth": getWeekdayOfBirth(inputDate),
+            "Days alive": calculateDaysAlive(today, inputDate),
+            "Current age": currentAge,
+            "Compared to Hariett the turtle": calculateTurtleAge(currentAge)
         };
-        
-        context.res = {
+
+        return {
             status: 200, /* Defaults to 200 */
             body: JSON.stringify(responseMessage)
         };
-        
-        return context.res;
-    }
+    },
 });
+
+function getWeekdayOfBirth(inputDate) {
+    const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    return  weekdays[new Date(inputDate).getDay()];
+}
+
+function calculateDaysAlive(today, inputDate) {
+    const diffInMs = new Date(today) - new Date(inputDate);
+    return Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+}
+
+function calculateCurrentAge(today, inputDate) {
+    let age = today.getFullYear() - inputDate.getFullYear();
+    const dobThisYear = new Date(today.getFullYear(), inputDate.getMonth(), inputDate.getDate());
+    if(today < dobThisYear) {
+        age--;
+    }
+    return age;
+}
+
+function calculateTurtleAge(age) {
+    return (age / 270).toFixed(2)*100 + "%";
+}
