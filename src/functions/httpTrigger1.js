@@ -6,7 +6,8 @@ app.http('httpTrigger1', {
     handler: async (req, context) => {
         context.log('JavaScript HTTP trigger function processed a request.');
 
-        const reqBody = await req.json();
+        const reqBody = await req.json().catch(() => {});
+
         const year = req.query.get('year') || (reqBody && reqBody.year);
         const month = req.query.get('month') || (reqBody && reqBody.month);
         const day = req.query.get('day') || (reqBody && reqBody.day);
